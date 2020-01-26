@@ -1,6 +1,7 @@
 package codes.biscuit.skyblockaddons.utils;
 
 import codes.biscuit.skyblockaddons.SkyblockAddons;
+import codes.biscuit.skyblockaddons.utils.database.DbItem;
 import codes.biscuit.skyblockaddons.utils.nifty.ChatFormatting;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -25,6 +26,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,13 +54,14 @@ public class InventoryUtils {
 
     private List<ItemStack> previousInventory;
     private Multimap<String, ItemDiff> itemPickupLog = ArrayListMultimap.create();
+    private Multimap<String, ItemDiff> previousPickupLog = ArrayListMultimap.create(itemPickupLog);
     private boolean inventoryIsFull;
     private boolean wearingSkeletonHelmet;
 
     private SlayerArmorProgress[] slayerArmorProgresses = new SlayerArmorProgress[4];
 
     private SkyblockAddons main;
-
+    
     public InventoryUtils(SkyblockAddons main) {
         this.main = main;
     }
@@ -147,6 +150,10 @@ public class InventoryUtils {
                     }
                     if (!added) itemPickupLog.put(diff.getDisplayName(), diff);
                 }
+                if(diff.getAmount()>0) {
+        			main.getLog().debug(diff.getAmount() + " new Items " + diff.getDisplayName());
+        			main.getDatabase().addDbItem(new DbItem(diff,main.getUtils().getLocation(),main.getUtils().getHeldItem()));
+            	}
             }
 
         }
@@ -164,7 +171,8 @@ public class InventoryUtils {
     /**
      * Removes items in the pickup log that have been there for longer than {@link ItemDiff#LIFESPAN}
      */
-    public void cleanUpPickupLog() {
+    
+    public void checkPickupLog() {
         itemPickupLog.entries().removeIf(entry -> entry.getValue().getLifetime() > ItemDiff.LIFESPAN);
     }
 

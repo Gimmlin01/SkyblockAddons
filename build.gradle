@@ -30,7 +30,10 @@ minecraft {
 
     mappings = "stable_22"
 }
+dependencies {
 
+    compile 'com.h2database:h2:1.4.200'
+}
 jar {
     archiveName = archivesBaseName + "-" + version + "-for-MC-1.8.9.jar"
     

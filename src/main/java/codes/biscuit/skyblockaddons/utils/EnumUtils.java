@@ -269,7 +269,8 @@ public class EnumUtils {
         BLAZING_FORTRESS("Blazing Fortress"),
 
         THE_END("The End"),
-        DRAGONS_NEST("Dragon's Nest");
+        DRAGONS_NEST("Dragon's Nest"),
+    	NULL("Not Cartographed");
 
         private String scoreboardName;
 
@@ -616,4 +617,32 @@ public class EnumUtils {
             return url;
         }
     }
+    
+    public enum Category {
+    	FISHING,
+    	MISC;
+
+    	public static Category getCategory(String name) {
+    		switch (name) {
+    		case "§fRaw Salmon":
+            	return FISHING;
+    		case "§fRaw Fish":
+            	return FISHING;
+    		case "§fSponge":
+            	return FISHING;
+    		case "§fInk Sack":
+            	return FISHING;
+            default:
+            	return MISC;
+    		}
+    	}
+    }
+
+    public enum Bait {
+    	NONE,
+    	SPIKED,
+    	FISH
+
+    }
+
 }

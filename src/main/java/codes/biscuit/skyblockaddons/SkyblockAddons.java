@@ -1,10 +1,12 @@
 package codes.biscuit.skyblockaddons;
 
 import codes.biscuit.skyblockaddons.commands.SkyblockAddonsCommand;
+import codes.biscuit.skyblockaddons.commands.SkyblockStatsCommand;
 import codes.biscuit.skyblockaddons.listeners.PlayerListener;
 import codes.biscuit.skyblockaddons.listeners.RenderListener;
 import codes.biscuit.skyblockaddons.tweaker.SkyblockAddonsTransformer;
 import codes.biscuit.skyblockaddons.utils.*;
+import codes.biscuit.skyblockaddons.utils.database.Database;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraftforge.client.ClientCommandHandler;
@@ -40,10 +42,17 @@ public class SkyblockAddons {
     private boolean usingLabymod = false;
     private boolean usingOofModv1 = false;
     private KeyBinding[] keyBindings = new KeyBinding[4];
-
+    private Log log;
+    private Database database;
+    private boolean debug = true;
+    private String dir;
+    
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent e) {
         instance = this;
+    	this.dir=e.getModConfigurationDirectory().getAbsolutePath();
+        log=new Log(this);
+        database=new Database(this);
         configValues = new ConfigValues(this, e.getSuggestedConfigurationFile());
         persistentValues = new PersistentValues(e.getSuggestedConfigurationFile());
     }
@@ -53,6 +62,7 @@ public class SkyblockAddons {
         MinecraftForge.EVENT_BUS.register(renderListener);
         MinecraftForge.EVENT_BUS.register(scheduler);
         ClientCommandHandler.instance.registerCommand(new SkyblockAddonsCommand(this));
+        ClientCommandHandler.instance.registerCommand(new SkyblockStatsCommand(this));
 
         keyBindings[0] = new KeyBinding("key.skyblockaddons.open_settings", Keyboard.KEY_NONE, MOD_NAME);
         keyBindings[1] = new KeyBinding("key.skyblockaddons.edit_gui", Keyboard.KEY_NONE, MOD_NAME);
@@ -177,5 +187,25 @@ public class SkyblockAddons {
 
     public KeyBinding getFreezeBackpackKey() {
         return keyBindings[3];
+    }
+    
+    public Log getLog() {
+    	return log;
+    }
+    
+    public void setDebug(Boolean debug) {
+    	this.debug=debug;
+    }
+    
+    public Boolean getDebug() {
+    	return debug;
+    }
+    
+    public Database getDatabase() {
+    	return database;
+    }
+    
+    public String getDir() {
+    	return dir;
     }
 }

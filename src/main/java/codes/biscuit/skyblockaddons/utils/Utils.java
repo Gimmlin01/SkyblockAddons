@@ -1,6 +1,8 @@
 package codes.biscuit.skyblockaddons.utils;
 
 import codes.biscuit.skyblockaddons.SkyblockAddons;
+import codes.biscuit.skyblockaddons.utils.EnumUtils.Location;
+import codes.biscuit.skyblockaddons.utils.database.DbItem;
 import codes.biscuit.skyblockaddons.utils.nifty.ChatFormatting;
 import codes.biscuit.skyblockaddons.utils.nifty.RegexUtil;
 import codes.biscuit.skyblockaddons.utils.nifty.StringUtil;
@@ -13,6 +15,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.event.ClickEvent;
@@ -76,7 +79,7 @@ public class Utils {
     private List<String> enchantmentExclusion = new LinkedList<>();
     private Backpack backpackToRender = null;
     private static boolean onSkyblock = false;
-    private EnumUtils.Location location = null;
+    private EnumUtils.Location location = Location.NULL;
     private String profileName = null;
     private boolean playingSound = false;
     private boolean copyNBT = false;
@@ -87,6 +90,7 @@ public class Utils {
     private boolean fadingIn;
 
     private SkyblockAddons main;
+    private DbItem heldItem;
 
     public Utils(SkyblockAddons main) {
         this.main = main;
@@ -119,6 +123,17 @@ public class Utils {
     // english, chinese simplified
     private static final Set<String> SKYBLOCK_IN_ALL_LANGUAGES = Sets.newHashSet("SKYBLOCK","\u7A7A\u5C9B\u751F\u5B58");
 
+    public void checkPlayer() {
+    	Minecraft mc = Minecraft.getMinecraft();
+    	EntityPlayerSP p = mc.thePlayer;
+        ItemStack heldItemStack = p.getHeldItem();
+        if (heldItemStack != null) {
+        	heldItem = new DbItem(heldItemStack,location);
+        }else {
+        	heldItem = null;
+        }
+    	
+    }
     public void checkGameLocationDate() {
         boolean foundLocation = false;
         Minecraft mc = Minecraft.getMinecraft();
@@ -195,7 +210,7 @@ public class Utils {
             onSkyblock = false;
         }
         if (!foundLocation) {
-            location = null;
+            location = Location.NULL;
         }
     }
 
@@ -898,5 +913,9 @@ public class Utils {
 
     public boolean isUsingDefaultBarTextures() {
         return usingDefaultBarTextures;
+    }
+    
+    public DbItem getHeldItem() {
+    	return heldItem;
     }
 }

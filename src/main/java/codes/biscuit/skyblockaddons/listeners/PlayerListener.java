@@ -2,6 +2,7 @@ package codes.biscuit.skyblockaddons.listeners;
 
 import codes.biscuit.skyblockaddons.SkyblockAddons;
 import codes.biscuit.skyblockaddons.utils.*;
+import codes.biscuit.skyblockaddons.utils.database.DbItem;
 import codes.biscuit.skyblockaddons.utils.nifty.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -284,7 +285,10 @@ public class PlayerListener {
                 } else if (timerTick % 5 == 0) { // Check inventory, location, updates, and skeleton helmet every 1/4 second.
                     EntityPlayerSP p = mc.thePlayer;
                     if (p != null) {
+                    	main.getLog().setIngame(true);
                         main.getUtils().checkGameLocationDate();
+                        main.getUtils().checkPlayer();
+                        main.getDatabase().checkResults();
                         main.getInventoryUtils().checkIfInventoryIsFull(mc, p);
                         main.getInventoryUtils().checkIfWearingSkeletonHelmet(p);
                         main.getInventoryUtils().checkIfWearingRevenantArmor(p);
@@ -301,9 +305,11 @@ public class PlayerListener {
                         if(main.getUtils().isOnSkyblock() && main.getConfigValues().isEnabled(Feature.TAB_EFFECT_TIMERS)){
                             TabEffectManager.getInstance().updatePotionEffects();
                         }
+                    }else {
+                    	main.getLog().setIngame(false);
                     }
 
-                    main.getInventoryUtils().cleanUpPickupLog();
+                    main.getInventoryUtils().checkPickupLog();
 
                 } else if (timerTick > 20) { // To keep the timer going from 1 to 21 only.
                     timerTick = 1;
