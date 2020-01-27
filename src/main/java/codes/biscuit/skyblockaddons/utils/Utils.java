@@ -90,7 +90,6 @@ public class Utils {
     private boolean fadingIn;
 
     private SkyblockAddons main;
-    private DbItem heldItem;
 
     public Utils(SkyblockAddons main) {
         this.main = main;
@@ -123,17 +122,6 @@ public class Utils {
     // english, chinese simplified
     private static final Set<String> SKYBLOCK_IN_ALL_LANGUAGES = Sets.newHashSet("SKYBLOCK","\u7A7A\u5C9B\u751F\u5B58");
 
-    public void checkPlayer() {
-    	Minecraft mc = Minecraft.getMinecraft();
-    	EntityPlayerSP p = mc.thePlayer;
-        ItemStack heldItemStack = p.getHeldItem();
-        if (heldItemStack != null) {
-        	heldItem = new DbItem(heldItemStack,location);
-        }else {
-        	heldItem = null;
-        }
-    	
-    }
     public void checkGameLocationDate() {
         boolean foundLocation = false;
         Minecraft mc = Minecraft.getMinecraft();
@@ -627,6 +615,7 @@ public class Utils {
                         fileOutputStream.write(dataBuffer, 0, bytesRead);
                         main.getRenderListener().getDownloadInfo().setDownloadedBytes(main.getRenderListener().getDownloadInfo().getDownloadedBytes()+bytesRead);
                     }
+                    fileOutputStream.close();
                     main.getRenderListener().getDownloadInfo().setMessageType(EnumUtils.UpdateMessageType.DOWNLOAD_FINISHED);
                 } catch (IOException e) {
                     main.getRenderListener().getDownloadInfo().setMessageType(EnumUtils.UpdateMessageType.FAILED);
@@ -668,11 +657,13 @@ public class Utils {
                             metadatas.setAccessible(true);
                             for (String modId : ((Map<String, ModMetadata>)metadatas.get(metadata)).keySet()) {
                                 if ("skyblockaddons".equals(modId)) {
+                                	jar.close();
                                     return coreMod.getParentFile();
                                 }
                             }
                             metadatas.setAccessible(false);
                         }
+                        jar.close();
                     }
                 }
             }
@@ -804,7 +795,7 @@ public class Utils {
         return new Color(160, 225, 229, alpha).getRGB();
     }
 
-    public String stripColor(String text) {
+    public static String stripColor(String text) {
         return RegexUtil.strip(text, RegexUtil.VANILLA_PATTERN);
     }
 
@@ -915,7 +906,4 @@ public class Utils {
         return usingDefaultBarTextures;
     }
     
-    public DbItem getHeldItem() {
-    	return heldItem;
-    }
 }

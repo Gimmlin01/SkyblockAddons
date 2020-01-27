@@ -10,7 +10,9 @@ public class DatabaseMessage {
 	public int affected=-1;
 	public boolean createifnotexist=true;
 	public DbItem dbItem=null;
+	public DbEvent dbEvent=null;
 	public boolean exit=false;
+	public boolean done=false;
 	
 	DatabaseMessage(boolean exit){
 		this.exit=exit;
@@ -25,6 +27,12 @@ public class DatabaseMessage {
 	DatabaseMessage(int id,Boolean update,DbItem dbItem){
 		this.id=id;
 		this.dbItem=dbItem;
+		this.update=update;
+	}
+	
+	DatabaseMessage(int id,Boolean update,DbEvent dbEvent){
+		this.id=id;
+		this.dbEvent=dbEvent;
 		this.update=update;
 	}
 	

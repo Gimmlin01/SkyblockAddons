@@ -144,7 +144,7 @@ public class InventoryUtils {
                     for (ItemDiff loopDiff : itemDiffs) {
                         if ((diff.getAmount() < 0 && loopDiff.getAmount() < 0) ||
                                 (diff.getAmount() > 0 && loopDiff.getAmount() > 0)) {
-                            loopDiff.add(diff.getAmount());
+                            loopDiff.add(diff.getAmount()); 
                             added = true;
                         }
                     }
@@ -152,7 +152,11 @@ public class InventoryUtils {
                 }
                 if(diff.getAmount()>0) {
         			main.getLog().debug(diff.getAmount() + " new Items " + diff.getDisplayName());
-        			main.getDatabase().addDbItem(new DbItem(diff,main.getUtils().getLocation(),main.getUtils().getHeldItem()));
+        			DbItem dbItem = new DbItem(diff,main.getUtils().getLocation(),main.getPlayerListener().getHeldItem());
+        			int msgId=main.getDatabase().addDbItem(dbItem);
+        			if (main.getPlayerListener().getIsFishing()) {
+            			main.getPlayerListener().getCurrentFishingEvent().addDependency(msgId);
+        			}
             	}
             }
 
@@ -172,7 +176,7 @@ public class InventoryUtils {
      * Removes items in the pickup log that have been there for longer than {@link ItemDiff#LIFESPAN}
      */
     
-    public void checkPickupLog() {
+    public void cleanPickupLog() {
         itemPickupLog.entries().removeIf(entry -> entry.getValue().getLifetime() > ItemDiff.LIFESPAN);
     }
 

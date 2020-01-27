@@ -12,15 +12,13 @@ import codes.biscuit.skyblockaddons.utils.EnumUtils.Category;
 import codes.biscuit.skyblockaddons.utils.ItemDiff;
 import net.minecraft.item.ItemStack;
 
-public class DbItem {
-	public long timestamp;
-	public Location location;
-	public Category category;
-	public String name;
-	public int count;
-	public long id;
-	public String heldItem;
-	public Bait bait;
+public class DbItem extends DbEntry{
+	private long timestamp;
+	private Location location;
+	private String name;
+	private int count;
+	private String heldItem;
+	private Bait bait;
 
 	public DbItem(ItemDiff diff,Location location,DbItem heldItem) {
 		this.timestamp=new Date().getTime();
@@ -41,6 +39,10 @@ public class DbItem {
 		this.count = item.stackSize;
 		this.bait = Bait.NONE;
 		this.category = Category.getCategory(this.name);
+	}
+	
+	public void processAnswer(long id) {
+		
 	}
 
 	public void readSQL(SQLInput stream, String typeName) throws SQLException {
@@ -76,14 +78,6 @@ public class DbItem {
 		this.location = value;
 	}
 
-	public Category getCategory() {
-		return this.category;
-	}
-
-	public void setCategory(Category value) {
-		this.category = value;
-	}
-
 	public String getName() {
 		return this.name;
 	}
@@ -116,11 +110,5 @@ public class DbItem {
 		this.count = value;
 	}
 
-	public long getId() {
-		return this.id;
-	}
 
-	public void setId(long value) {
-		this.id = value;
-	}
 }

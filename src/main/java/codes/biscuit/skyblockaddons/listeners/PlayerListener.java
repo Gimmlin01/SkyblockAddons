@@ -2,6 +2,8 @@ package codes.biscuit.skyblockaddons.listeners;
 
 import codes.biscuit.skyblockaddons.SkyblockAddons;
 import codes.biscuit.skyblockaddons.utils.*;
+import codes.biscuit.skyblockaddons.utils.EnumUtils.Category;
+import codes.biscuit.skyblockaddons.utils.database.DbEvent;
 import codes.biscuit.skyblockaddons.utils.database.DbItem;
 import codes.biscuit.skyblockaddons.utils.nifty.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -86,9 +88,15 @@ public class PlayerListener {
     private int magmaTime = 0;
     private int recentMagmaCubes = 0;
     private int recentBlazes = 0;
+    
+    private LinkedList<DbEvent> fishHistory = new LinkedList<DbEvent>(); 
 
     private final SkyblockAddons main;
     private final ActionBarParser actionBarParser;
+    
+    private DbItem heldItem;
+    private DbEvent currentFishingEvent;
+    private Boolean isFishing=false;
 
     public PlayerListener(SkyblockAddons main) {
         this.main = main;
@@ -234,7 +242,7 @@ public class PlayerListener {
             // Prevent using ember rod on personal island
             if (heldItem.getItem().equals(Items.fishing_rod) // Update fishing status
                     && (e.action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK || e.action == PlayerInteractEvent.Action.RIGHT_CLICK_AIR)) {
-                if (main.getConfigValues().isEnabled(Feature.FISHING_SOUND_INDICATOR)) {
+                if (true) {//main.getConfigValues().isEnabled(Feature.FISHING_SOUND_INDICATOR)) {
                     oldBobberIsInWater = false;
                     lastBobberEnteredWater = Long.MAX_VALUE;
                     oldBobberPosY = 0;
@@ -274,6 +282,7 @@ public class PlayerListener {
                     }
                 }
                 if (shouldTriggerFishingIndicator()) { // The logic fits better in its own function
+                	main.getLog().info("Bing");
                     main.getUtils().playLoudSound("random.successful_hit", 0.8);
                 }
                 if (timerTick == 20) { // Add natural mana every second (increase is based on your max mana).
@@ -286,8 +295,8 @@ public class PlayerListener {
                     EntityPlayerSP p = mc.thePlayer;
                     if (p != null) {
                     	main.getLog().setIngame(true);
+                    	//main.getLog().debug("fishing = " + isFishing);
                         main.getUtils().checkGameLocationDate();
-                        main.getUtils().checkPlayer();
                         main.getDatabase().checkResults();
                         main.getInventoryUtils().checkIfInventoryIsFull(mc, p);
                         main.getInventoryUtils().checkIfWearingSkeletonHelmet(p);
@@ -296,7 +305,12 @@ public class PlayerListener {
                             main.getUtils().checkUpdates();
                             sentUpdate = true;
                         }
-
+                        ItemStack heldItemStack = p.getHeldItem();
+                        if (heldItemStack != null) {
+                        	heldItem = new DbItem(heldItemStack,main.getUtils().getLocation());
+                        }else {
+                        	heldItem = null;
+                        }
                         if (mc.currentScreen == null && main.getConfigValues().isEnabled(Feature.ITEM_PICKUP_LOG)
                                 && main.getPlayerListener().didntRecentlyJoinWorld()) {
                             main.getInventoryUtils().getInventoryDifference(p.inventory.mainInventory);
@@ -309,7 +323,7 @@ public class PlayerListener {
                     	main.getLog().setIngame(false);
                     }
 
-                    main.getInventoryUtils().checkPickupLog();
+                    main.getInventoryUtils().cleanPickupLog();
 
                 } else if (timerTick > 20) { // To keep the timer going from 1 to 21 only.
                     timerTick = 1;
@@ -646,26 +660,47 @@ public class PlayerListener {
 
     private boolean shouldTriggerFishingIndicator() {
         Minecraft mc =  Minecraft.getMinecraft();
+        boolean fish = false;
         if (mc.thePlayer != null && mc.thePlayer.fishEntity != null && mc.thePlayer.getHeldItem() != null
                 && mc.thePlayer.getHeldItem().getItem().equals(Items.fishing_rod)
-                && main.getConfigValues().isEnabled(Feature.FISHING_SOUND_INDICATOR)) {
+                ) { //main.getConfigValues().isEnabled(Feature.FISHING_SOUND_INDICATOR)) {
             // Highly consistent detection by checking when the hook has been in the water for a while and
             // suddenly moves downward. The client may rarely bug out with the idle bobbing and trigger a false positive.
             EntityFishHook bobber = mc.thePlayer.fishEntity;
             long currentTime = System.currentTimeMillis();
-            if (bobber.isInWater() && !oldBobberIsInWater) lastBobberEnteredWater = currentTime;
+            if (bobber.isInWater() && !oldBobberIsInWater) {
+            	currentFishingEvent = new DbEvent(Category.FISHING, currentTime, main.getUtils().getLocation(), heldItem);
+            	lastBobberEnteredWater = currentTime;
+            }
             oldBobberIsInWater = bobber.isInWater();
+            fish=bobber.isInWater();
+            
             if (bobber.isInWater() && Math.abs(bobber.motionX) < 0.01 && Math.abs(bobber.motionZ) < 0.01
                     && currentTime - lastFishingAlert > 1000 && currentTime - lastBobberEnteredWater > 1500) {
-                double movement = bobber.posY - oldBobberPosY; // The Entity#motionY field is inaccurate for this purpose
+            	double movement = bobber.posY - oldBobberPosY; // The Entity#motionY field is inaccurate for this purpose
                 oldBobberPosY = bobber.posY;
-                if (movement < -0.04d){
+                if (movement < -0.02d){
                     lastFishingAlert = currentTime;
                     return true;
                 }
             }
+        } else {
+        	if (currentFishingEvent != null) {
+        		currentFishingEvent.setEnd(System.currentTimeMillis());
+        		currentFishingEvent.calcDuration();
+        		main.getDatabase().addDbEvent(currentFishingEvent);
+        		this.fishHistory.add(currentFishingEvent);
+        		currentFishingEvent = null;
+        		main.getLog().debug("adding new Event");
+        	}
         }
+        isFishing=fish;
         return false;
+    }
+    
+    public void addToFishHistory(long time) {
+    	
+    	
     }
 
     public enum GUIType {
@@ -734,5 +769,17 @@ public class PlayerListener {
 
     public int getMaxTickers() {
         return actionBarParser.getMaxTickers();
+    }
+    
+    public DbItem getHeldItem() {
+    	return heldItem;
+    }
+
+    public Boolean getIsFishing() {
+    	return isFishing;
+    }
+    
+    public DbEvent getCurrentFishingEvent() {
+    	return currentFishingEvent;
     }
 }

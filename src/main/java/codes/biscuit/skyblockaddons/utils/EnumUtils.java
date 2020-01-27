@@ -623,14 +623,14 @@ public class EnumUtils {
     	MISC;
 
     	public static Category getCategory(String name) {
-    		switch (name) {
-    		case "§fRaw Salmon":
+    		switch (Utils.stripColor(name)) {
+    		case "Raw Salmon":
             	return FISHING;
-    		case "§fRaw Fish":
+    		case "Raw Fish":
             	return FISHING;
-    		case "§fSponge":
+    		case "Sponge":
             	return FISHING;
-    		case "§fInk Sack":
+    		case "Ink Sack":
             	return FISHING;
             default:
             	return MISC;
