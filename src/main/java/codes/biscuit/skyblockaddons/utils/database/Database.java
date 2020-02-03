@@ -1,5 +1,6 @@
 package codes.biscuit.skyblockaddons.utils.database;
 
+import java.lang.reflect.Array;
 import java.sql.Connection;
 import org.h2.tools.Server;
 
@@ -21,7 +22,10 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import org.h2.jdbc.JdbcSQLNonTransientConnectionException;
 import codes.biscuit.skyblockaddons.SkyblockAddons;
+import codes.biscuit.skyblockaddons.utils.EnumUtils.Bait;
 import codes.biscuit.skyblockaddons.utils.EnumUtils.Category;
+import codes.biscuit.skyblockaddons.utils.EnumUtils.Location;
+import codes.biscuit.skyblockaddons.utils.EnumUtils.SeaCreature;
 import net.minecraft.client.Minecraft;
 import codes.biscuit.skyblockaddons.utils.Log;
 
@@ -40,6 +44,9 @@ public class Database {
 	private Multimap<Integer, DbEntry> entrysWaitingForAnswer;
 	private List<DatabaseMessage> messageHistory;
 	private Server server;
+	private Server webserver;
+	private long start = Long.MIN_VALUE;
+	private long stop= Long.MAX_VALUE;
 
 	public Database(SkyblockAddons main) {
 		this.main = main;
@@ -55,11 +62,24 @@ public class Database {
 	public void startServer() {
 		try {
 			main.getLog().debug("Starting TCP Server on Port: " + port);
-			server = Server.createTcpServer("-tcpPort", port, "-tcpAllowOthers").start();
+			server = Server.createTcpServer("-tcpPort", port, "-ifNotExists").start();
 			startDatabaseThread();
 		} catch (JdbcSQLNonTransientConnectionException e) {
 			main.getLog().debug("Cannot Bind Port " + port + ". Server Already Running? Trying to connect...");
 			startDatabaseThread();
+			// TODO Auto-generated catch block
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void startWebServer() {
+		try {
+			main.getLog().debug("Starting Web Server on Port: 8082");
+			webserver = Server.createWebServer().start();
+		} catch (JdbcSQLNonTransientConnectionException e) {
+			main.getLog().debug("Cannot Bind Port 8082. Server Already Running? Trying to connect...");
 			// TODO Auto-generated catch block
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -75,6 +95,12 @@ public class Database {
 	public void stopServer() {
 		if (server != null && server.isRunning(true)) {
 			server.shutdown();
+		}
+	}
+	
+	public void stopWebServer() {
+		if (webserver != null && webserver.isRunning(true)) {
+			webserver.shutdown();
 		}
 	}
 
@@ -109,44 +135,65 @@ public class Database {
 					e.printStackTrace();
 				}
 			} else if (dbm.update) {
-				main.getLog().debug(dbm.sql + " affected " + dbm.affected);
 				if (dbm.dbItem != null && main.getDebug()) {
-					getDbItem(dbm.dbItem);
+					DbQuery dbQuery = DbQuery.getItemCount(dbm.dbItem.getName());
+					getQuery(dbQuery);
 				}
 
 				if (dbm.dbItem != null && dbm.dbItem.getId() >= 0) {
+					main.getLog().debug("Got Back Id: " + dbm.dbItem.getId());
 					ArrayList<DbEntry> waiting = new ArrayList(entrysWaitingForAnswer.get(dbm.id));
 					ArrayList<DbEntry> remove = new ArrayList();
 					for (DbEntry dbe : waiting) {
-						dbe.processAnswer(dbm.dbItem.getId());
+						int size = dbe.processAnswer(dbm.dbItem.getId());
 						remove.add(dbe);
+						main.getLog().info("Processed Answer new Size: " + size);
 					}
 					waiting.removeAll(remove);
 				}
 			} else {
 				try {
-					if (dbm.dbItem != null) {
-						int sum = 0;
-						while (dbm.rs.next()) {
-							sum += dbm.rs.getInt("count");
+					if (dbm.dbQuery != null){
+						if (dbm.dbQuery.getEvent()) {
+							long sum = 0;
+							Object[] array;
+							int i = 0;
+							int j = 0;
+							while (dbm.rs.next()) {
+								j++;
+								array = (Object[]) dbm.rs.getArray("dbItemIds").getArray();
+								boolean valid = false;
+								for (Object obj : array ) {
+									if (obj != null) {
+										valid=true;
+									}
+								}
+								if (valid) {
+									i++;
+									sum += dbm.rs.getLong("duration");
+								}
+							}
+							if (i != 0) {
+								double mean = sum / i / 1000.0;
+								main.getLog().info("Mean Fishing Time: " + mean + "s. " + i + " valid Events " + j + " not");
+							} else {
+								main.getLog().info("No valid Data");
+								main.getLog().info(dbm.sql);
+							}
+						}else {
+							int sum = 0;
+							while (dbm.rs.next()) {
+								sum += dbm.rs.getInt("count");
+							}
+							if (dbm.dbQuery.getBegin() <= 0) {
+								main.getLog().info(sum + " " + dbm.dbQuery.getName() + " so far");
+							} else {
+								long delta =dbm.dbQuery.getEnd() - dbm.dbQuery.getBegin();
+								double perSecond=sum*1000.0/delta;
+								main.getLog().info(sum + " " + dbm.dbQuery.getName() + " since "
+										+ (delta/ 1000) + "s => " + perSecond + " per second");
+							}
 						}
-						main.getLog().info(sum + " " + dbm.dbItem.getName() + " so far");
-					} else if (dbm.dbEvent != null) {
-
-						long sum = 0;
-						int i = 0;
-						while (dbm.rs.next()) {
-							i++;
-							sum += dbm.rs.getLong("duration");
-						}
-						if (i != 0) {
-							double mean = sum / i / 1000.0;
-							main.getLog().info("Mean Fishing Time: " + mean + "s. " + i + " Events");
-						} else {
-							main.getLog().info("No Data");
-							main.getLog().info(dbm.sql);
-						}
-
 					} else {
 						main.getLog().info("nothing to do");
 					}
@@ -178,13 +225,14 @@ public class Database {
 					try {
 						msgDone = messageHistory.get(msgId).done;
 					} catch (IndexOutOfBoundsException e) {
+						e.printStackTrace();
 						// do nothing
 					}
 
 					if (msgDone) {
 						main.getLog().debug("item already done");
 						dbEvent.processAnswer(messageHistory.get(msgId).dbItem.getId());
-					} else if (!entrysWaitingForAnswer.containsEntry(msgDone, dbEvent)) {
+					} else if (!entrysWaitingForAnswer.containsEntry(msgId, dbEvent)) {
 						main.getLog().debug("waiting");
 						entrysWaitingForAnswer.put(msgId, dbEvent);
 						// retry
@@ -210,15 +258,15 @@ public class Database {
 		}
 	}
 
-	public void getDbItem(DbItem dbItem) {
-		DatabaseMessage dbm = new DatabaseMessage(this.id, false, dbItem);
+	public void getQuery(DbQuery dbQuery) {
+		DatabaseMessage dbm = new DatabaseMessage(this.id, dbQuery);
 		send(dbm);
 	}
 
-	public void getDbEvent(DbEvent dbEvent) {
-		DatabaseMessage dbm = new DatabaseMessage(this.id, false, dbEvent);
-		send(dbm);
-	}
+//	public void getDbEvent(DbEvent dbEvent) {
+//		DatabaseMessage dbm = new DatabaseMessage(this.id, false, dbEvent);
+//		send(dbm);
+//	}
 
 	public int send(DatabaseMessage dbm) {
 		messageHistory.add(dbm);
@@ -232,45 +280,30 @@ public class Database {
 		return this.id;
 	}
 
-	public void dropItemTable(Category category) {
-		String sql = "DROP TABLE " + category;
+	public void dropItemTable() {
+		String sql = "DROP TABLE ITEMS";
 		DatabaseMessage dbm = new DatabaseMessage(this.id, true, sql);
-		this.id++;
-		try {
-			inQueue.put(dbm);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		send(dbm);
 	}
 
 	public void dropEventTable(Category category) {
 		String sql = "DROP TABLE " + category + "_EVENT";
 		DatabaseMessage dbm = new DatabaseMessage(this.id, true, sql);
-		this.id++;
-		try {
-			inQueue.put(dbm);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		send(dbm);
 	}
 
-	public void resetItemTable(Category category) {
-		if (category != null) {
-			dropItemTable(category);
-			initItemTable(category);
-			main.getLog().info(category + " was reset");
-		} else {
-			resetAllItemTables();
-		}
+	public void resetItemTable() {
+		dropItemTable();
+		initItemTable();
+		main.getLog().info("Item Table was reset");
+
 	}
 
 	public void resetEventTable(Category category) {
 		if (category != null) {
 			dropEventTable(category);
 			initEventTable(category);
-			main.getLog().info(category + " was reset");
+			main.getLog().info(category + "_EVENT Table was reset");
 		} else {
 			resetAllEventTables();
 		}
@@ -282,46 +315,20 @@ public class Database {
 		}
 	}
 
-	public void resetAllItemTables() {
-		for (Category cat : Category.values()) {
-			resetItemTable(cat);
-		}
-	}
-
 	public void initAllEventTables() {
 		for (Category cat : Category.values()) {
 			initEventTable(cat);
 		}
 	}
 
-	public void initAllItemTables() {
-		for (Category cat : Category.values()) {
-			initItemTable(cat);
-		}
-	}
-
 	public void resetAllTables() {
-		resetAllItemTables();
+		resetItemTable();
 		resetAllEventTables();
 	}
 
 	public void initAllTables() {
-		initAllItemTables();
+		initItemTable();
 		initAllEventTables();
-	}
-
-	public void initItemTable(Category category) {
-		main.getLog().info("init " + category);
-		switch (category) {
-		case FISHING:
-			initFishingTable();
-			break;
-		case MISC:
-			initMiscTable();
-			break;
-		default:
-			main.getLog().info("Cannot init Table - " + category + " not found!");
-		}
 	}
 
 	public void initEventTable(Category category) {
@@ -338,61 +345,26 @@ public class Database {
 		}
 	}
 
-	public void initFishingTable() {
-		String sql = ("CREATE TABLE IF NOT EXISTS " + Category.FISHING + " (" + "  id LONG NOT NULL AUTO_INCREMENT,"
-				+ "  timestamp LONG," + "  name VARCHAR(255)," + "  count INTEGER," + "  location ENUM("
-				+ "    'ISLAND'," + "    'VILLAGE'," + "    'AUCTION_HOUSE'," + "    'BANK'," + "    'LIBRARY',"
-				+ "    'COAL_MINE'," + "    'GRAVEYARD'," + "    'COLOSSEUM'," + "    'WILDERNESS'," + "    'MOUNTAIN',"
-				+ "    'WIZARD_TOWER'," + "    'RUINS'," + "    'FOREST'," + "    'FARM'," + "    'FISHERMANS_HUT',"
-				+ "    'HIGH_LEVEL'," + "    'FLOWER_HOUSE'," + "    'CANVAS_ROOM'," + "    'TAVERN',"
-				+ "    'BIRCH_PARK'," + "    'SPRUCE_WOODS'," + "    'JUNGLE_ISLAND'," + "    'SAVANNA_WOODLAND',"
-				+ "    'DARK_THICKET'," + "    'GOLD_MINE'," + "    'DEEP_CAVERNS'," + "    'GUNPOWDER_MINES',"
-				+ "    'LAPIS_QUARRY'," + "    'PIGMAN_DEN'," + "    'SLIMEHILL'," + "    'DIAMOND_RESERVE',"
-				+ "    'OBSIDIAN_SANCTUARY'," + "    'THE_BARN'," + "    'MUSHROOM_DESERT'," + "    'SPIDERS_DEN',"
-				+ "    'BLAZING_FORTRESS'," + "    'THE_END'," + "    'DRAGONS_NEST'," + "    'NULL'" + "  ),"
-				+ "  heldItem VARCHAR(255)," + "  bait ENUM('NONE', 'FISH', 'SPIKED')," + "  PRIMARY KEY (id)" + ")");
-		DatabaseMessage dbm = new DatabaseMessage(this.id, true, sql);
-		send(dbm);
-	}
-
-	public void initMiscTable() {
-		String sql = ("CREATE TABLE IF NOT EXISTS " + Category.MISC + " (" + "  id LONG NOT NULL AUTO_INCREMENT,"
-				+ "  timestamp LONG," + "  name VARCHAR(255)," + "  count INTEGER," + "  location ENUM("
-				+ "    'ISLAND'," + "    'VILLAGE'," + "    'AUCTION_HOUSE'," + "    'BANK'," + "    'LIBRARY',"
-				+ "    'COAL_MINE'," + "    'GRAVEYARD'," + "    'COLOSSEUM'," + "    'WILDERNESS'," + "    'MOUNTAIN',"
-				+ "    'WIZARD_TOWER'," + "    'RUINS'," + "    'FOREST'," + "    'FARM'," + "    'FISHERMANS_HUT',"
-				+ "    'HIGH_LEVEL'," + "    'FLOWER_HOUSE'," + "    'CANVAS_ROOM'," + "    'TAVERN',"
-				+ "    'BIRCH_PARK'," + "    'SPRUCE_WOODS'," + "    'JUNGLE_ISLAND'," + "    'SAVANNA_WOODLAND',"
-				+ "    'DARK_THICKET'," + "    'GOLD_MINE'," + "    'DEEP_CAVERNS'," + "    'GUNPOWDER_MINES',"
-				+ "    'LAPIS_QUARRY'," + "    'PIGMAN_DEN'," + "    'SLIMEHILL'," + "    'DIAMOND_RESERVE',"
-				+ "    'OBSIDIAN_SANCTUARY'," + "    'THE_BARN'," + "    'MUSHROOM_DESERT'," + "    'SPIDERS_DEN',"
-				+ "    'BLAZING_FORTRESS'," + "    'THE_END'," + "    'DRAGONS_NEST'," + "    'NULL'" + "  ),"
-				+ "  heldItem VARCHAR(255)," + "  bait ENUM('NONE', 'FISH', 'SPIKED')," + "  PRIMARY KEY (id)" + ")");
+	public void initItemTable() {
+		String sql = ("CREATE TABLE IF NOT EXISTS ITEMS ( " + "id LONG NOT NULL AUTO_INCREMENT, " + "timestamp LONG, "
+				+ "name VARCHAR(255), " + "count INTEGER, " + Location.getSql() + "heldItem VARCHAR(255), "
+				+ Bait.getSql() + Category.getSql()	+ "PRIMARY KEY (id)" + ")");
 		DatabaseMessage dbm = new DatabaseMessage(this.id, true, sql);
 		send(dbm);
 	}
 
 	public void initFishingEventTable() {
 		String sql = ("CREATE TABLE IF NOT EXISTS " + Category.FISHING + "_EVENT ("
-				+ "  id LONG NOT NULL AUTO_INCREMENT," + "  begin LONG," + "  end LONG," + "  duration LONG,"
-				+ "  dbItemIds ARRAY[256]," + "  location ENUM(" + "    'ISLAND'," + "    'VILLAGE',"
-				+ "    'AUCTION_HOUSE'," + "    'BANK'," + "    'LIBRARY'," + "    'COAL_MINE'," + "    'GRAVEYARD',"
-				+ "    'COLOSSEUM'," + "    'WILDERNESS'," + "    'MOUNTAIN'," + "    'WIZARD_TOWER'," + "    'RUINS',"
-				+ "    'FOREST'," + "    'FARM'," + "    'FISHERMANS_HUT'," + "    'HIGH_LEVEL',"
-				+ "    'FLOWER_HOUSE'," + "    'CANVAS_ROOM'," + "    'TAVERN'," + "    'BIRCH_PARK',"
-				+ "    'SPRUCE_WOODS'," + "    'JUNGLE_ISLAND'," + "    'SAVANNA_WOODLAND'," + "    'DARK_THICKET',"
-				+ "    'GOLD_MINE'," + "    'DEEP_CAVERNS'," + "    'GUNPOWDER_MINES'," + "    'LAPIS_QUARRY',"
-				+ "    'PIGMAN_DEN'," + "    'SLIMEHILL'," + "    'DIAMOND_RESERVE'," + "    'OBSIDIAN_SANCTUARY',"
-				+ "    'THE_BARN'," + "    'MUSHROOM_DESERT'," + "    'SPIDERS_DEN'," + "    'BLAZING_FORTRESS',"
-				+ "    'THE_END'," + "    'DRAGONS_NEST'," + "    'NULL'" + "  )," + "  heldItem VARCHAR(255),"
-				+ "  bait ENUM('NONE', 'FISH', 'SPIKED')," + "  PRIMARY KEY (id)" + ")");
+				+ "id LONG NOT NULL AUTO_INCREMENT, " + "begin LONG, " + "end LONG, " + "duration LONG, "
+				+ "dbItemIds ARRAY[256], " + Location.getSql() + "heldItem VARCHAR(255), "
+				+ Bait.getSql() + SeaCreature.getSql() + "PRIMARY KEY (id)" + ")");
 		DatabaseMessage dbm = new DatabaseMessage(this.id, true, sql);
 		send(dbm);
 	}
 
 	public void initMiscEventTable() {
 		String sql = ("CREATE TABLE IF NOT EXISTS " + Category.MISC + "_EVENT (" + "  id LONG NOT NULL AUTO_INCREMENT,"
-				+ "  begin LONG," + "  end LONG," + "  duration LONG," + "  dbItemIds ARRAY[256," + "  location ENUM("
+				+ "  begin LONG," + "  end LONG," + "  duration LONG," + "  dbItemIds ARRAY[256]," + "  location ENUM("
 				+ "    'ISLAND'," + "    'VILLAGE'," + "    'AUCTION_HOUSE'," + "    'BANK'," + "    'LIBRARY',"
 				+ "    'COAL_MINE'," + "    'GRAVEYARD'," + "    'COLOSSEUM'," + "    'WILDERNESS'," + "    'MOUNTAIN',"
 				+ "    'WIZARD_TOWER'," + "    'RUINS'," + "    'FOREST'," + "    'FARM'," + "    'FISHERMANS_HUT',"
@@ -402,7 +374,7 @@ public class Database {
 				+ "    'LAPIS_QUARRY'," + "    'PIGMAN_DEN'," + "    'SLIMEHILL'," + "    'DIAMOND_RESERVE',"
 				+ "    'OBSIDIAN_SANCTUARY'," + "    'THE_BARN'," + "    'MUSHROOM_DESERT'," + "    'SPIDERS_DEN',"
 				+ "    'BLAZING_FORTRESS'," + "    'THE_END'," + "    'DRAGONS_NEST'," + "    'NULL'" + "  ),"
-				+ "  heldItem VARCHAR(255)," + "  bait ENUM('NONE', 'FISH', 'SPIKED')," + "  PRIMARY KEY (id)" + ")");
+				+ "  heldItem VARCHAR(255)," + "  bait ENUM('NULL', 'FISH', 'SPIKED')," + "  PRIMARY KEY (id)" + ")");
 		DatabaseMessage dbm = new DatabaseMessage(this.id, true, sql);
 		send(dbm);
 	}

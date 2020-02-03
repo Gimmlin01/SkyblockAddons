@@ -9,6 +9,7 @@ import java.util.List;
 import codes.biscuit.skyblockaddons.utils.EnumUtils.Bait;
 import codes.biscuit.skyblockaddons.utils.EnumUtils.Category;
 import codes.biscuit.skyblockaddons.utils.EnumUtils.Location;
+import codes.biscuit.skyblockaddons.utils.EnumUtils.SeaCreature;
 
 public class DbEvent extends DbEntry{
 
@@ -20,11 +21,13 @@ public class DbEvent extends DbEntry{
 	
 	private List<Long> dbItemsIds = new ArrayList <Long>();
 
-	private Location location;
+	private Location location=Location.NULL;
 
 	private DbItem heldItem;
 
-	private Bait bait;
+	private Bait bait=Bait.NULL;
+	
+	private SeaCreature seaCreature=SeaCreature.NULL;
 
 	
 	public DbEvent(Category category, long begin, long end, List dbItems, Location location, DbItem heldItem) {
@@ -34,23 +37,23 @@ public class DbEvent extends DbEntry{
 		this.duration = end - begin;
 		this.location = location;
 		this.heldItem = heldItem;
-		this.bait = Bait.NONE;
 	}
 
-	public DbEvent(Category category, long begin, Location location, DbItem heldItem) {
+	public DbEvent(Category category, long begin, Location location, DbItem heldItem, Bait bait) {
 		this.category=category;
 		this.begin = begin;
 		this.location = location;
 		this.heldItem = heldItem;
-		this.bait = Bait.NONE;
+		this.bait=bait;
 	}
 
 	public void calcDuration() {
 		duration = end - begin;
 	}
 	
-	public void processAnswer(long id) {
+	public int processAnswer(long id) {
 		dbItemsIds.add(id);
+		return dbItemsIds.size();
 	}
 
 	public void addTo(PreparedStatement pstmt) throws SQLException {
@@ -60,8 +63,14 @@ public class DbEvent extends DbEntry{
 		pstmt.setLong(4, duration);
 		pstmt.setObject(5, dbItemsIds.toArray());
 		pstmt.setString(6, location.name());
-		pstmt.setString(7, heldItem.getName());
+		if (heldItem != null) {
+			pstmt.setString(7, heldItem.getName());
+
+		} else {
+			pstmt.setString(7, "NULL");
+		}
 		pstmt.setString(8, bait.name());
+		pstmt.setString(9, seaCreature.name());
 		pstmt.addBatch();
 	}
 
@@ -111,5 +120,13 @@ public class DbEvent extends DbEntry{
 
 	public void setBait(Bait value) {
 		this.bait = value;
+	}
+	
+	public SeaCreature getSeaCreature() {
+		return this.seaCreature;
+	}
+
+	public void setSeaCreature(SeaCreature seaCreature) {
+		this.seaCreature = seaCreature;
 	}
 }

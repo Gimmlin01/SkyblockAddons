@@ -26,7 +26,9 @@ import net.minecraft.launchwrapper.Launch;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.scoreboard.*;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.IChatComponent;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.FMLLog;
 import net.minecraftforge.fml.common.MetadataCollection;
@@ -103,10 +105,11 @@ public class Utils {
     }
 
     public void sendMessage(String text) {
-        ClientChatReceivedEvent event = new ClientChatReceivedEvent((byte) 1, new ChatComponentText(text));
+    	IChatComponent chatComponent = new ChatComponentText(text);
+        ClientChatReceivedEvent event = new ClientChatReceivedEvent((byte) 1, chatComponent);
         MinecraftForge.EVENT_BUS.post(event); // Let other mods pick up the new message
         if (!event.isCanceled()) {
-            Minecraft.getMinecraft().thePlayer.addChatMessage(event.message); // Just for logs
+            Minecraft.getMinecraft().thePlayer.addChatMessage(ForgeHooks.newChatWithLinks(text)); // Just for logs
         }
     }
 
@@ -804,7 +807,8 @@ public class Utils {
     }
 
     public boolean isOnSkyblock() {
-        return onSkyblock;
+    	//debug
+        return true;
     }
 
     public boolean isFadingIn() {

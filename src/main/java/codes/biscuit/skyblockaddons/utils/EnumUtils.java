@@ -281,6 +281,15 @@ public class EnumUtils {
         public String getScoreboardName() {
             return scoreboardName;
         }
+        
+    	public static String getSql() {
+    		String sql = Location.class.getSimpleName() +" ENUM('";
+    		for (Location location : Location.values()) {
+    			sql = sql + location.name() + "', '";
+    		}
+    		sql = sql.substring(0,sql.length()-3) + "), ";
+    		return sql;
+    	}
     }
 
     // Different indicators of the magma boss are more accurate than others, display how accurate the time is.
@@ -636,13 +645,95 @@ public class EnumUtils {
             	return MISC;
     		}
     	}
+    	
+    	public static String getSql() {
+    		String sql = Category.class.getSimpleName() +" ENUM('";
+    		for (Category category : Category.values()) {
+    			sql = sql + category.name() +"', '";
+    		}
+    		sql = sql.substring(0,sql.length()-3) + "), ";
+    		return sql;
+    	}
     }
 
     public enum Bait {
-    	NONE,
-    	SPIKED,
-    	FISH
-
+    	NULL("NULL"),
+    	SPIKED("Spiked Bait"),
+    	MINNOW("Minnow Bait"),
+    	FISH("Fish Bait"),
+    	WHALE("Whale Bait"),
+    	Light("Light Bait"),
+    	DARK("Dark Bait"),
+    	SPOOKY("Spooky Bait"),
+    	BLESSED("Blessed Bait"),
+    	CARROT("Carrot Bait"),
+    	ICE("Ice Bait");
+    	
+    	private String ingameName;
+    	Bait(String ingameName) {
+    		this.ingameName=ingameName;
+    	}
+    	
+    	public String getIngameName() {
+    		return ingameName;
+    	}
+    	
+    	public static String getSql() {
+    		String sql = Bait.class.getSimpleName() +" ENUM('";
+    		for (Bait bait : Bait.values()) {
+    			sql = sql + bait.name() + "', '";
+    		}
+    		sql = sql.substring(0,sql.length()-3) + "), ";
+    		return sql;
+    	}
+    	
+    	public static Bait valueOfIngame(String string) {
+    		for (Bait bait : Bait.values()) {
+    			if (bait.getIngameName().equals(string))
+    				return bait;
+    		}
+    		throw new IllegalArgumentException();
+    	}
+    }
+    
+    public enum SeaCreature{
+    	NULL("NULL"),
+    	SQUID("Squid"), 
+    	SEA_WALKER("Sea Walker"),
+    	NIGHT_SQUID("Night Squid"),
+    	FROZEN_STEVE("Frozen Steve"),
+    	SEA_GUARDIAN("Sea Guardian"),
+    	FROSTY("Frosty"),
+    	SEA_WICH("Sea Witch"),
+    	SEA_ARCHER("Sea Archer"),
+    	CHICKEN("Monster of the Deep"),
+    	GRINCH("Grinch"),
+    	CATFISH("Catfish"),
+    	CARROT_KING("Carrot king"),
+    	SEA_LEACH("Sea Leach"),
+    	GUARDIAN_DEFENDER("Guardian Defender"),
+    	GOLEM("Deep Sea Protector"),
+    	WATER_HYDRA("Water Hydra"),
+    	EMPEROR("The Sea Emperor"),
+    	YETI("Yeti");
+    	
+    	private String ingameName;
+    	SeaCreature(String ingameName) {
+    		this.ingameName=ingameName;
+    	}
+    	
+    	public String getIngameName() {
+    		return ingameName;
+    	}
+    	
+    	public static String getSql() {
+    		String sql = SeaCreature.class.getSimpleName() +" ENUM('";
+    		for (SeaCreature seaCreature : SeaCreature.values()) {
+    			sql = sql + seaCreature.name() + "', '";
+    		}
+    		sql = sql.substring(0,sql.length()-3) + "), ";
+    		return sql;
+    	}
     }
 
 }

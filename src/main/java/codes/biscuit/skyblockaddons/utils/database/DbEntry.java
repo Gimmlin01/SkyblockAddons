@@ -10,7 +10,7 @@ public abstract class DbEntry {
 	protected Category category;
 	protected List<Integer> dependencyMsgs=new ArrayList<Integer>();
 	
-	abstract void processAnswer(long id);
+	abstract int processAnswer(long id);
 
 	public long getId() {
 		return this.id;
@@ -32,9 +32,9 @@ public abstract class DbEntry {
 		return dependencyMsgs;
 	}
 	
-	public void addDependency(Integer id) {
+	public int addDependency(Integer id) {
 		dependencyMsgs.add(id);
-		
+		return dependencyMsgs.size();
 	}
 
 }

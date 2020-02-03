@@ -1,6 +1,7 @@
 package codes.biscuit.skyblockaddons.utils;
 
 import codes.biscuit.skyblockaddons.SkyblockAddons;
+import codes.biscuit.skyblockaddons.utils.EnumUtils.Bait;
 import codes.biscuit.skyblockaddons.utils.database.DbItem;
 import codes.biscuit.skyblockaddons.utils.nifty.ChatFormatting;
 import com.google.common.collect.ArrayListMultimap;
@@ -83,6 +84,22 @@ public class InventoryUtils {
         }
         return copy;
     }
+    
+    public Bait getBait(ItemStack[] currentInventory) {
+        List<ItemStack> newInventory = copyInventory(currentInventory);
+        for(ItemStack itemStack : newInventory) {
+    		if (itemStack != null) {
+    			try {
+    				String string = Utils.stripColor(itemStack.getDisplayName());
+    				return Bait.valueOfIngame(string);
+    			}catch (IllegalArgumentException e){
+    			}catch (Exception e){
+    				e.printStackTrace();
+    			}
+    		} 
+    	}
+    	return Bait.NULL;
+    }
 
     /**
      * Compares previously recorded Inventory state with current Inventory state to determine changes and
@@ -154,8 +171,9 @@ public class InventoryUtils {
         			main.getLog().debug(diff.getAmount() + " new Items " + diff.getDisplayName());
         			DbItem dbItem = new DbItem(diff,main.getUtils().getLocation(),main.getPlayerListener().getHeldItem());
         			int msgId=main.getDatabase().addDbItem(dbItem);
-        			if (main.getPlayerListener().getIsFishing()) {
-            			main.getPlayerListener().getCurrentFishingEvent().addDependency(msgId);
+        			if (main.getPlayerListener().getlootingFishingEvent() != null) {
+            			int size = main.getPlayerListener().getlootingFishingEvent().addDependency(msgId);
+            			main.getLog().debug("added Dependency on "+ msgId + " new size: " + size);
         			}
             	}
             }

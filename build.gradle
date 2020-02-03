@@ -27,15 +27,26 @@ targetCompatibility = 1.8
 minecraft {
     version = "1.8.9-11.15.1.2318-1.8.9"
     runDir = "run"
-
     mappings = "stable_22"
+}
+configurations {
+    shade
+    compile.extendsFrom shade
 }
 dependencies {
 
-    compile 'com.h2database:h2:1.4.200'
+    shade 'com.h2database:h2:1.4.200'
 }
+
+
 jar {
     archiveName = archivesBaseName + "-" + version + "-for-MC-1.8.9.jar"
+    
+    configurations.shade.each { dep ->
+        from(project.zipTree(dep)){
+            exclude 'META-INF', 'META-INF/**'
+        }
+    }
     
     manifest.attributes(
             'Main-Class': 'OpenErrorMessage',

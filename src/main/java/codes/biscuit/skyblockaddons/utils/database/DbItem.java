@@ -14,18 +14,21 @@ import net.minecraft.item.ItemStack;
 
 public class DbItem extends DbEntry{
 	private long timestamp;
-	private Location location;
+	private Location location=Location.NULL;
 	private String name;
 	private int count;
 	private String heldItem;
-	private Bait bait;
+	private Bait bait = Bait.NULL;
+	
+	public DbItem(Long timestamp) {
+		this.timestamp=timestamp;
+	}
 
 	public DbItem(ItemDiff diff,Location location,DbItem heldItem) {
 		this.timestamp=new Date().getTime();
 		this.location=location;
 		this.name=diff.getDisplayName();
 		this.count=diff.getAmount();
-		this.bait=Bait.NONE;
 		this.category=Category.getCategory(this.name);
 		if (heldItem != null) {
 			this.heldItem=heldItem.getName();
@@ -37,12 +40,11 @@ public class DbItem extends DbEntry{
 		this.location = location;
 		this.name = item.getDisplayName();
 		this.count = item.stackSize;
-		this.bait = Bait.NONE;
 		this.category = Category.getCategory(this.name);
 	}
 	
-	public void processAnswer(long id) {
-		
+	public int processAnswer(long id) {
+		return -1;
 	}
 
 	public void readSQL(SQLInput stream, String typeName) throws SQLException {
@@ -63,11 +65,16 @@ public class DbItem extends DbEntry{
 		pstmt.setString(5, location.name());
 		pstmt.setString(6, heldItem);
 		pstmt.setString(7, bait.name());
+		pstmt.setString(8, category.name());
 		pstmt.addBatch();
 	}
 
-	long getTimestamp() {
+	public long getTimestamp() {
 		return this.timestamp;
+	}
+	
+	public void setTimestamp(long timestamp) {
+		this.timestamp=timestamp;
 	}
 
 	public Location getLocation() {

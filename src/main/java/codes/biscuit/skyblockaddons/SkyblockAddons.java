@@ -52,10 +52,13 @@ public class SkyblockAddons {
         instance = this;
     	this.dir=e.getModConfigurationDirectory().getAbsolutePath();
         log=new Log(this);
+        log.debug("---------------------------------Starting GAME-----------------------------------");
         database=new Database(this);
         configValues = new ConfigValues(this, e.getSuggestedConfigurationFile());
         persistentValues = new PersistentValues(e.getSuggestedConfigurationFile());
+        
     }
+    
     @Mod.EventHandler
     public void init(FMLInitializationEvent e) {
         MinecraftForge.EVENT_BUS.register(playerListener);

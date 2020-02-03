@@ -44,13 +44,12 @@ public class DatabaseThread extends Thread {
 			while (!dbm.exit) {
 				try {
 					if (dbm.update) {
-						System.out.println("isUpdate");
 						if (dbm.sql != null) {
 							Statement stmt = conn.createStatement();
 							dbm.affected = stmt.executeUpdate(dbm.sql);
 						} else if (dbm.dbItem != null) {
 							// log.info("trying to update");
-							String sql = "insert into " + dbm.dbItem.getCategory() + " values(?,?,?,?,?,?,?);";
+							String sql = "insert into ITEMS values(?,?,?,?,?,?,?,?);";
 							PreparedStatement pstmt = conn.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS);
 							dbm.dbItem.addTo(pstmt);
 							int[] aff = pstmt.executeBatch(); 
@@ -69,7 +68,7 @@ public class DatabaseThread extends Thread {
 							}
 						}else if (dbm.dbEvent != null) {
 							// log.info("trying to update");
-							String sql = "insert into " + dbm.dbEvent.getCategory() + "_EVENT values(?,?,?,?,?,?,?,?);";
+							String sql = "insert into " + dbm.dbEvent.getCategory() + "_EVENT values(?,?,?,?,?,?,?,?,?);";
 							PreparedStatement pstmt = conn.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS);
 							dbm.dbEvent.addTo(pstmt);
 							int[] aff = pstmt.executeBatch(); 
@@ -88,22 +87,14 @@ public class DatabaseThread extends Thread {
 							}
 						}
 					} else {
-						System.out.println("isQuery");
 						if (dbm.sql != null) {
 							Statement stmt = conn.createStatement();
 							dbm.rs = stmt.executeQuery(dbm.sql);
-						} else if (dbm.dbItem != null) {
+						} else if (dbm.dbQuery != null) {
 							Statement stmt = conn.createStatement();
-							dbm.sql = "SELECT count FROM " + dbm.dbItem.getCategory() + " WHERE name = '"
-									+ dbm.dbItem.getName().replaceAll("\\'", "\\'\\'") + "';";
-							dbm.rs = stmt.executeQuery(dbm.sql);
-						} else if (dbm.dbEvent != null) {
-							Statement stmt = conn.createStatement();
-							dbm.sql = "SELECT duration FROM " + dbm.dbEvent.getCategory() + "_EVENT" + " WHERE "
-									+ (dbm.dbEvent.getBegin() + dbm.dbEvent.getEnd()) + " >= begin AND begin >= "
-									+ (dbm.dbEvent.getBegin() - dbm.dbEvent.getEnd()) + ";";
-							dbm.rs = stmt.executeQuery(dbm.sql);
-						} else {
+							dbm.sql = dbm.dbQuery.getSql();
+							dbm.rs = stmt.executeQuery(dbm.sql);							
+						}else {
 							log.info("nothing to do");
 						}
 					}

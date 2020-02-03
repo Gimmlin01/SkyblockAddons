@@ -11,6 +11,7 @@ public class DatabaseMessage {
 	public boolean createifnotexist=true;
 	public DbItem dbItem=null;
 	public DbEvent dbEvent=null;
+	public DbQuery dbQuery=null;
 	public boolean exit=false;
 	public boolean done=false;
 	
@@ -22,6 +23,12 @@ public class DatabaseMessage {
 		this.id=id;
 		this.sql=sql;
 		this.update=update;
+	}
+	
+	DatabaseMessage(int id,DbQuery dbQuery){
+		this.id=id;
+		this.dbQuery=dbQuery;
+		this.update=false;
 	}
 	
 	DatabaseMessage(int id,Boolean update,DbItem dbItem){
